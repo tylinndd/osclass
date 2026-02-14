@@ -1,0 +1,8 @@
+[WARN] Non-critical warning at module 50
+[WARN] Non-critical warning at module 100
+[WARN] Non-critical warning at module 150
+[WARN] Non-critical warning at module 200
+[WARN] Non-critical warning at module 250
+[WARN] Deprecated function call in legacy module
+[ERROR] STDERR_KEY: ERRORS_LOGGED_5678
+[WARN] Memory usage approaching threshold
