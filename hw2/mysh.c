@@ -30,6 +30,24 @@ int main(void) {
             arg_count++;
             args[arg_count] = strtok(NULL, " ");
         }
+        if (strcmp(args[0], "cd") == 0) {
+            if (args[1] != NULL){
+                int change = chdir(args[1]);
+                if (change == -1){
+                    perror("cd failed");
+                } else{
+                    chdir(args[1]);
+                }
+            } else {
+                chdir(getenv("HOME"));
+            }
+            continue;
+        }
+
+        if (strcmp(args[0],"exit") == 0){
+            break;
+        }
+    
         pid_t pid = fork();
         if (pid == 0){
             execvp(args[0], args);
