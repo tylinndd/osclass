@@ -25,7 +25,14 @@ int main(void) {
 
         char *newline = strchr(line, '\n');
         if (newline) *newline = '\0';
+        arg_count = 0;
+        args[arg_count] = strtok(line, " ");
+        while (args[arg_count] != NULL) {
+            arg_count++;
+            args[arg_count] = strtok(NULL, " ");
+        }
         printf("You entered: %s\n", line);
+
     }
     return 0;
 }
