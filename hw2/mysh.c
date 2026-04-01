@@ -16,9 +16,8 @@ int main(void) {
     while (1) {
         printf("mysh> ");
         fflush(stdout);
-        fgets(line, sizeof(line), stdin);
-        char buffer[100];
-        if (fgets(buffer, sizeof(buffer), stdin) == NULL) {
+        
+        if (fgets(line, sizeof(line), stdin)== NULL) {
             printf("\n");
             break;
         }
@@ -31,7 +30,18 @@ int main(void) {
             arg_count++;
             args[arg_count] = strtok(NULL, " ");
         }
+        pid_t pid = fork();
+        if (pid == 0){
+            execvp(args[0], args);
+            perror("execvp failed");
+            exit(1);
+        } else if (pid > 0){
+            waitpid(pid, NULL, 0);
+        } else {
+            perror("fork failed");
+        }
         printf("You entered: %s\n", line);
+        
 
     }
     return 0;
