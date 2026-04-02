@@ -1,0 +1,7 @@
+HW2 Building a Shell.pdf
+hw2_grader
+hw2_grader_aarch64
+hw2_grader_x86_64
+mysh
+mysh.c
+out.txt

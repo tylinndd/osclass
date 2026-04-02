@@ -47,9 +47,32 @@ int main(void) {
         if (strcmp(args[0],"exit") == 0){
             break;
         }
-    
+
+        char *fname = NULL;
+
+        for (int x = 0; args[x] != NULL; x++) {
+            if (strcmp(args[x], ">") == 0) {
+                fname = args[x + 1];
+                args[x] = NULL;
+                args[x+1] = NULL;
+                break;
+            }
+        }
+
+        
+
         pid_t pid = fork();
         if (pid == 0){
+            if (fname != NULL){
+                int fd = open(fname, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+                if (fd == -1){
+                    perror("Could not open file");
+                    exit(1);
+                }
+            dup2(fd, STDOUT_FILENO);
+            close(fd);
+            }
+            
             execvp(args[0], args);
             perror("execvp failed");
             exit(1);
