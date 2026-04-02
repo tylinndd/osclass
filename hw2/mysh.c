@@ -49,15 +49,22 @@ int main(void) {
         }
 
         char *fname = NULL;
-
+        char *fname_in = NULL;
         for (int x = 0; args[x] != NULL; x++) {
             if (strcmp(args[x], ">") == 0) {
                 fname = args[x + 1];
                 args[x] = NULL;
                 args[x+1] = NULL;
-                break;
+                
+            } else if (strcmp(args[x], "<") == 0) {
+                fname_in = args[x + 1];
+                args[x] = NULL;
+                args[x+1] = NULL;
             }
         }
+
+        
+        
 
         
 
@@ -71,6 +78,17 @@ int main(void) {
                 }
             dup2(fd, STDOUT_FILENO);
             close(fd);
+            }
+
+            if (fname_in != NULL){
+                int fd = open(fname_in, O_RDONLY);
+                if (fd == -1){
+                    perror("Could not open file");
+                    exit(1);
+                }
+                dup2(fd, STDIN_FILENO);
+                close(fd);
+
             }
             
             execvp(args[0], args);
