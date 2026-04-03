@@ -8,11 +8,12 @@
 #include <sys/wait.h>
 #include <fcntl.h>
 #include <signal.h>
-
+void sigchld_handler(int sig) {while (waitpid(-1, NULL, WNOHANG) > 0);}
 int main(void) {
     char line[1024];
     char *args[64];
     int arg_count;
+    signal(SIGCHLD, sigchld_handler);
     while (1) {
         printf("mysh> ");
         fflush(stdout);
@@ -52,6 +53,7 @@ int main(void) {
         char *fname_in = NULL;
         char **left = NULL;
         char **right = NULL;
+        int background = 0;
         for (int x = 0; args[x] != NULL; x++) {
             if (strcmp(args[x], ">") == 0) {
                 fname = args[x + 1];
@@ -66,7 +68,11 @@ int main(void) {
                 args[x] = NULL;
                 left = args;
                 right = &args[x + 1];
-            }
+            } else if (strcmp(args[x], "&") == 0) {
+                background = 1;
+                args[x] = NULL;
+                break;
+    }
         }
 
 
@@ -128,7 +134,10 @@ int main(void) {
             perror("execvp failed");
             exit(1);
         } else if (pid > 0){
-            waitpid(pid, NULL, 0);
+            if (background == 0){
+                waitpid(pid, NULL, 0);
+            }
+            
         } else {
             perror("fork failed");
         }
