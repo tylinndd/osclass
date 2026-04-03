@@ -50,6 +50,8 @@ int main(void) {
 
         char *fname = NULL;
         char *fname_in = NULL;
+        char **left = NULL;
+        char **right = NULL;
         for (int x = 0; args[x] != NULL; x++) {
             if (strcmp(args[x], ">") == 0) {
                 fname = args[x + 1];
@@ -60,14 +62,15 @@ int main(void) {
                 fname_in = args[x + 1];
                 args[x] = NULL;
                 args[x+1] = NULL;
+            } else if (strcmp(args[x], "|") == 0){
+                args[x] = NULL;
+                left = args;
+                right = &args[x + 1];
             }
         }
 
-        
-        
 
         
-
         pid_t pid = fork();
         if (pid == 0){
             if (fname != NULL){
@@ -89,6 +92,36 @@ int main(void) {
                 dup2(fd, STDIN_FILENO);
                 close(fd);
 
+            }
+            if (left != NULL) {
+                int pipefd[2];
+                pipe(pipefd);
+                pid_t pid_l = fork();
+                
+                if (pid_l == 0){
+                    close(pipefd[0]);
+                    dup2(pipefd[1], STDOUT_FILENO);
+                    close(pipefd[1]);
+                    execvp(left[0], left);
+                    perror("left command fail");
+                    exit(1); 
+                }
+                
+                pid_t pid_r = fork();
+                if (pid_r == 0){
+                    close(pipefd[1]);
+                    dup2(pipefd[0], STDIN_FILENO);
+                    close(pipefd[0]);
+                    execvp(right[0], right);
+                    perror("right command fail");
+                    exit(1);
+                }
+                close(pipefd[0]);
+                close(pipefd[1]);
+                waitpid(pid_l,NULL,0);
+                waitpid(pid_r, NULL, 0);
+                exit(0);
+                
             }
             
             execvp(args[0], args);
