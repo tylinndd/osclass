@@ -1,4 +1,4 @@
-# mysh — A Custom Unix Shell
+# mysh — A Custom Unix Shell in hw2 folder
 
 A Unix shell built from scratch in C for CS 3502: Operating Systems. Implements core shell functionality including process creation, file descriptor manipulation, and signal handling.
 
