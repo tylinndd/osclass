@@ -21,6 +21,13 @@ printf("%lu %s\n", hash, task);
 fflush(stdout);
 }
 
+void *worker(void *arg) {
+int id = *(int *)arg;
+printf("Worker %d ready\n", id);
+fflush(stdout);
+return NULL;
+}
+
 int main(int argc, char *argv[]) {
 
     if (argc < 2) {
@@ -33,6 +40,17 @@ int main(int argc, char *argv[]) {
     if (num_threads < 1) {
         fprintf(stderr, "Usage: %s <num_threads>\n", argv[0]);
         return 1;
+    }
+    pthread_t threads[num_threads];
+    int thread_ids[num_threads];
+
+    for (int i = 0; i < num_threads; i++) {
+        thread_ids[i] = i;
+        pthread_create(&threads[i], NULL, worker, &thread_ids[i]);
+    }
+
+    for (int i = 0; i < num_threads; i++) {
+        pthread_join(threads[i], NULL);
     }
 
     char buf[1024];
@@ -49,6 +67,6 @@ int main(int argc, char *argv[]) {
 
         process_task(buf);
     }
-    
+
     return 0;
 }
