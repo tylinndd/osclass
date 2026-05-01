@@ -25,10 +25,12 @@ typedef struct task_node {
 char task[1024];
 struct task_node *next;
 } task_node_t;
+
 typedef struct {
 task_node_t *head;
 task_node_t *tail;
 int done;
+pthread_mutex_t mutex;
 } task_queue_t;
 
 task_queue_t queue = { .head = NULL, .tail = NULL, .done = 0 };
@@ -58,16 +60,22 @@ void *worker(void *arg) {
     int id = *(int *)arg;
     char buf[1024];
     while (1) {
+        pthread_mutex_lock(&queue.mutex);
         if (pop_task(&queue, buf)) {
+            pthread_mutex_unlock(&queue.mutex);
             process_task(buf);
         } else if (queue.done) {
+            pthread_mutex_unlock(&queue.mutex);
             break;
+        } else {
+            pthread_mutex_unlock(&queue.mutex);
         }
     }
     return NULL;
 }
 
 int main(int argc, char *argv[]) {
+    
 
     if (argc < 2) {
         fprintf(stderr, "Usage: %s <num_threads>\n", argv[0]);
@@ -80,6 +88,9 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "Usage: %s <num_threads>\n", argv[0]);
         return 1;
     }
+
+    pthread_mutex_init(&queue.mutex, NULL);
+    
     pthread_t threads[num_threads];
     int thread_ids[num_threads];
 
@@ -87,24 +98,26 @@ int main(int argc, char *argv[]) {
         thread_ids[i] = i;
         pthread_create(&threads[i], NULL, worker, &thread_ids[i]);
     }
-
-    for (int i = 0; i < num_threads; i++) {
-        pthread_join(threads[i], NULL);
-    }
-
     char buf[1024];
-
     while (fgets(buf, sizeof(buf), stdin) != NULL) {
         char *newline = strchr(buf, '\n');
         if (newline) *newline = '\0';
         if (buf[0] == '\0') continue;
+        pthread_mutex_lock(&queue.mutex);
         push_task(&queue, buf);
+        pthread_mutex_unlock(&queue.mutex);
     }
+
+    pthread_mutex_lock(&queue.mutex);
     queue.done = 1;
+    pthread_mutex_unlock(&queue.mutex);
 
     for (int i = 0; i < num_threads; i++) {
         pthread_join(threads[i], NULL);
     }
+
+    
+    pthread_mutex_destroy(&queue.mutex);
 
     return 0;
 }
