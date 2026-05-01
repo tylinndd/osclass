@@ -31,6 +31,8 @@ task_node_t *head;
 task_node_t *tail;
 int done;
 pthread_mutex_t mutex;
+pthread_cond_t cond;
+
 } task_queue_t;
 
 task_queue_t queue = { .head = NULL, .tail = NULL, .done = 0 };
@@ -61,6 +63,9 @@ void *worker(void *arg) {
     char buf[1024];
     while (1) {
         pthread_mutex_lock(&queue.mutex);
+        while (queue.head == NULL && !queue.done) {
+            pthread_cond_wait(&queue.cond, &queue.mutex);
+        }
         if (pop_task(&queue, buf)) {
             pthread_mutex_unlock(&queue.mutex);
             process_task(buf);
@@ -90,6 +95,7 @@ int main(int argc, char *argv[]) {
     }
 
     pthread_mutex_init(&queue.mutex, NULL);
+    pthread_cond_init(&queue.cond, NULL);
     
     pthread_t threads[num_threads];
     int thread_ids[num_threads];
@@ -105,11 +111,13 @@ int main(int argc, char *argv[]) {
         if (buf[0] == '\0') continue;
         pthread_mutex_lock(&queue.mutex);
         push_task(&queue, buf);
+        pthread_cond_signal(&queue.cond);
         pthread_mutex_unlock(&queue.mutex);
     }
 
     pthread_mutex_lock(&queue.mutex);
     queue.done = 1;
+    pthread_cond_broadcast(&queue.cond);
     pthread_mutex_unlock(&queue.mutex);
 
     for (int i = 0; i < num_threads; i++) {
@@ -118,6 +126,7 @@ int main(int argc, char *argv[]) {
 
     
     pthread_mutex_destroy(&queue.mutex);
+    pthread_cond_destroy(&queue.cond);
 
     return 0;
 }
