@@ -32,10 +32,12 @@ task_node_t *tail;
 int done;
 pthread_mutex_t mutex;
 pthread_cond_t cond;
-
+int count;
+int current_workers;
+int base_workers;
 } task_queue_t;
 
-task_queue_t queue = { .head = NULL, .tail = NULL, .done = 0 };
+task_queue_t queue = { .head = NULL, .tail = NULL, .done = 0, .count = 0, .current_workers = 0, .base_workers = 0 };
 void push_task(task_queue_t *q, const char *task) {
     task_node_t *node = malloc(sizeof(task_node_t));
     strcpy(node->task, task);
@@ -47,6 +49,7 @@ void push_task(task_queue_t *q, const char *task) {
         q->head = node;
         q->tail = node;
     }
+    q->count++;
 }
 
 int pop_task(task_queue_t *q, char *buf) {
@@ -56,6 +59,7 @@ int pop_task(task_queue_t *q, char *buf) {
     q->head = node->next;
     if (q->head == NULL) q->tail = NULL;
     free(node);
+    q->count--;
     return 1;
 }
 void *worker(void *arg) {
@@ -64,6 +68,11 @@ void *worker(void *arg) {
     while (1) {
         pthread_mutex_lock(&queue.mutex);
         while (queue.head == NULL && !queue.done) {
+            if (queue.current_workers > queue.base_workers) {
+                queue.current_workers--;
+                pthread_mutex_unlock(&queue.mutex);
+                return NULL;
+            }
             pthread_cond_wait(&queue.cond, &queue.mutex);
         }
         if (pop_task(&queue, buf)) {
@@ -97,8 +106,13 @@ int main(int argc, char *argv[]) {
     pthread_mutex_init(&queue.mutex, NULL);
     pthread_cond_init(&queue.cond, NULL);
     
-    pthread_t threads[num_threads];
-    int thread_ids[num_threads];
+    int max_threads = num_threads * 10;
+    pthread_t *threads = malloc(sizeof(pthread_t) * max_threads);
+    int *thread_ids = malloc(sizeof(int) * max_threads);
+    int total_threads = num_threads;
+
+    queue.base_workers = num_threads;
+    queue.current_workers = num_threads;
 
     for (int i = 0; i < num_threads; i++) {
         thread_ids[i] = i;
@@ -112,6 +126,13 @@ int main(int argc, char *argv[]) {
         pthread_mutex_lock(&queue.mutex);
         push_task(&queue, buf);
         pthread_cond_signal(&queue.cond);
+        if (queue.count > queue.base_workers * 2 && 
+            queue.current_workers < max_threads) {
+            thread_ids[total_threads] = total_threads;
+            pthread_create(&threads[total_threads], NULL, worker, &thread_ids[total_threads]);
+            queue.current_workers++;
+            total_threads++;
+        }
         pthread_mutex_unlock(&queue.mutex);
     }
 
@@ -120,13 +141,14 @@ int main(int argc, char *argv[]) {
     pthread_cond_broadcast(&queue.cond);
     pthread_mutex_unlock(&queue.mutex);
 
-    for (int i = 0; i < num_threads; i++) {
+    for (int i = 0; i < total_threads; i++) {
         pthread_join(threads[i], NULL);
     }
 
-    
     pthread_mutex_destroy(&queue.mutex);
     pthread_cond_destroy(&queue.cond);
+    free(threads);
+    free(thread_ids);
 
     return 0;
 }
